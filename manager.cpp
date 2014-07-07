@@ -38,7 +38,7 @@ int Manager::parse(int argc, char *argv[])
 		} else if (strcmp(argv[i], "uninstall") == 0) {
 			_cmd = CMD_UNINSTALL;
 			i++;
-		} else if (strcmp(argv[i], "list") == 0) {
+		} else if (strcmp(argv[i], "listapp") == 0) {
 			_cmd = CMD_LISTAPP;
 		} else if (strcmp(argv[i], "ls") == 0) {
 			_cmd = CMD_LISTDIR;

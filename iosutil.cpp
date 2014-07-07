@@ -76,7 +76,8 @@ void usage() {
         "device commands:\n"
         "  install <.app/.ipa path>             install app\n"
 		"  uninstall <bundle id>                uninstall app\n"
-        "  list                                 list all installed apps\n"
+        "  listapp                              list all installed apps\n"
+        "  ls <path>                            ls directory\n"
 	);
 	exit(0);
 }

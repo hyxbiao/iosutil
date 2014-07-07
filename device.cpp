@@ -1,5 +1,6 @@
 
 #include "MobileDevice.h"
+#include "fileaccess.h"
 #include "device.h"
 
 Device::Device(struct am_device *device)
@@ -210,57 +211,26 @@ int Device::listDirectory(const char *dir_path)
 {
 	service_conn_t fd_afc;
 	if (startService(AMSVC_AFC, &fd_afc) != 0) {
-		CFRelease(dir_path);
 		return -1;
 	}
 
-	struct afc_connection *afc = NULL;
-	mach_error_t status = AFCConnectionOpen(fd_afc, 0, &afc);
-	if (status != MDERR_OK) {
-		stopService(fd_afc);
-		CFRelease(dir_path);
-		return -1;
+	int ret = 0;
+	FileAccess *fa = new FileAccess(fd_afc);
+	if (fa->connect() != 0) {
+		ret = -1;
+		goto LISTDIR_END;
 	}
 
-	struct afc_directory *dir;
-	if (AFCDirectoryOpen(afc, dir_path, &dir) != MDERR_OK) {
-		stopService(fd_afc);
-		CFRelease(dir_path);
-		return -1;
+	if (fa->listDirectory(dir_path) != 0) {
+		ret = -1;
+		goto LISTDIR_END;
 	}
-	char *d = NULL;
-	char path[256];
-    struct afc_dictionary *file_info;
-	while(true) {
-		AFCDirectoryRead(afc, dir, &d);
-		if (d == NULL) {
-			break;
-		}
-		snprintf(path, sizeof(path), "%s/%s", dir_path, d);
-		if (AFCFileInfoOpen(afc, path, &file_info) != MDERR_OK) {
-			continue;
-		}
-		char *key = NULL, *value = NULL;
-		while(AFCKeyValueRead(file_info, &key, &value) == MDERR_OK) {
-			if (key == NULL || value == NULL) {
-				break;
-			}
-		} 
-		AFCKeyValueClose(file_info);
-		printf("file: %s\n", d);
-	}
-	AFCDirectoryClose(afc, dir);
 
+LISTDIR_END:
+	delete fa;
 	stopService(fd_afc);
 
-	if (status != MDERR_OK) {
-		CFRelease(dir_path);
-		return -1;
-	}
-
-	CFRelease(dir_path);
-
-	return 0;
+	return ret;
 }
 
 int Device::startService(CFStringRef service_name, service_conn_t *handle)
