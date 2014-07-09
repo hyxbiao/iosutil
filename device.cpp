@@ -207,31 +207,49 @@ int Device::listApps()
 	return 0;
 }
 
-int Device::listDirectory(const char *dir_path)
+int Device::operateFile(int cmd, const char *str_target, const char *arg1, const char *arg2)
 {
+	int status = 0;
+	int ret = 0;
 	service_conn_t fd_afc;
-	if (startService(AMSVC_AFC, &fd_afc) != 0) {
+	if (startFileService(str_target, &fd_afc) != 0) {
 		return -1;
 	}
 
-	int ret = 0;
 	FileAccess *fa = new FileAccess(fd_afc);
 	if (fa->connect() != 0) {
-		ret = -1;
-		goto LISTDIR_END;
+		status = -1;
+		goto OPFILE_END;
 	}
 
-	if (fa->listDirectory(dir_path) != 0) {
-		ret = -1;
-		goto LISTDIR_END;
+	switch (cmd) {
+	case CMD_LISTDIR: {
+		ret = fa->listDirectory(arg1);
+		break;
+	}
+	case CMD_PUSH: {
+		ret = fa->push(arg1, arg2);
+		break;
+	}
+	case CMD_PULL: {
+		ret = fa->pull(arg1, arg2);
+		break;
+	}
+	default: {}
+		break;
+	}
+	if (ret != 0) {
+		status = -1;
+		goto OPFILE_END;
 	}
 
-LISTDIR_END:
+OPFILE_END:
 	delete fa;
 	stopService(fd_afc);
 
-	return ret;
-}
+	return status;
+
+} 
 
 int Device::startLogcat()
 {
@@ -304,6 +322,27 @@ bool Device::isAlive()
 void Device::setAlive(bool alive)
 {
 	_alive = alive;
+}
+
+int Device::startFileService(const char *str_target, service_conn_t *handle)
+{
+	int ret = 0;
+	if (str_target == NULL) {
+		ret = startService(AMSVC_AFC, handle);
+	} else if (strcmp(str_target, "crash") == 0) {
+		ret = startService(AMSVC_CRASH_REPORT_COPY_MOBILE, handle);
+	} else {
+		CFStringRef target = CFStringCreateWithCString(NULL, str_target, kCFStringEncodingASCII);
+		if (startSession() == 0) {
+			ret = AMDeviceStartHouseArrestService(_device, target, NULL, handle, 0);
+			stopSession();
+		}
+		CFRelease(target);
+	}
+	if (ret != 0) {
+		return -1;
+	}
+	return 0;
 }
 
 int Device::startService(CFStringRef service_name, service_conn_t *handle)

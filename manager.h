@@ -38,16 +38,14 @@ private:
 private:
 	static Manager *_inst;
 	CFMutableDictionaryRef _devices;
-
-private:
-	int _argc;
-	char **_argv;
-	int _argindex;
+	int _state;
 
 private:
 	char *_device_id;
 	int _cmd;
-	int _state;
+	char *_arg1;
+	char *_arg2;
+	char *_option;
 };
 
 #endif	//__MANAGER_H__

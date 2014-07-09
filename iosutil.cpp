@@ -70,15 +70,17 @@ void handle_device_old(struct am_device *device) {
 void usage() {
     printf(
         "Usage: iosutil [OPTION]...\n"
-        "  -s <device id>                       specific device\n"
-        "  devices                              list all connected devices\n"
+        "  -s <device id>                                      specific device\n"
+        "  devices                                             list all connected devices\n"
 		"\n"
         "device commands:\n"
-        "  install <.app/.ipa path>             install app\n"
-		"  uninstall <bundle id>                uninstall app\n"
-        "  listapp                              list all installed apps\n"
-        "  ls <path>                            ls directory\n"
-        "  logcat                               tail syslog\n"
+        "  install <.app/.ipa path>                            install app\n"
+		"  uninstall <bundle id>                               uninstall app\n"
+        "  listapp                                             list all installed apps\n"
+        "  logcat                                              tail syslog\n"
+        "  ls [-b <bundle id|crash>] <path>                    ls directory\n"
+        "  push [-b <bundle id|crash>] <local> <remote>        copy file/dir to device\n"
+        "  pull [-b <bundle id|crash>] <remote> <local>        copy file/dir from device\n"
 	);
 	exit(0);
 }

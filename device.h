@@ -22,7 +22,7 @@ public:
 	int uninstall(const char *str_bundle_id);
 
 	int listApps();
-	int listDirectory(const char *dir_path);
+	int operateFile(int cmd, const char *target, const char *arg1, const char *arg2);
 
 	int startLogcat();
 	void stopLogcat();
@@ -30,6 +30,8 @@ public:
 	bool isAlive();
 	void setAlive(bool alive);
 protected:
+	int startFileService(const char *target, service_conn_t *handle);
+
 	int startService(CFStringRef service_name, service_conn_t *handle);
 	void stopService(service_conn_t handle);
 

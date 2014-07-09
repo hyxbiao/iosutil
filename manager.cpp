@@ -25,35 +25,59 @@ int Manager::parse(int argc, char *argv[])
 {
 	int i = 1;
 
-	_cmd = CMD_UNKNOWN;
-	while (_cmd == CMD_UNKNOWN && i < argc) {
-		if (strcmp(argv[i], "-s") == 0 && i+1 < argc) {
+	_option = NULL;
+	while (i < argc) {
+		if (strcmp(argv[i], "-s") == 0) {
 			_device_id = argv[i+1];
 			i++;
-		} else if (strcmp(argv[i], "devices") == 0) {
-			_cmd = CMD_DEVICES;
-		} else if (strcmp(argv[i], "install") == 0) {
-			_cmd = CMD_INSTALL;
-			i++;
-		} else if (strcmp(argv[i], "uninstall") == 0) {
-			_cmd = CMD_UNINSTALL;
-			i++;
-		} else if (strcmp(argv[i], "listapp") == 0) {
-			_cmd = CMD_LISTAPP;
-		} else if (strcmp(argv[i], "ls") == 0) {
-			_cmd = CMD_LISTDIR;
-			i++;
-		} else if (strcmp(argv[i], "logcat") == 0) {
-			_cmd = CMD_LOGCAT;
-		} else {
-			return -1;
+		} else { 
+			if (strcmp(argv[i], "devices") == 0) {
+				_cmd = CMD_DEVICES;
+			} else if (strcmp(argv[i], "install") == 0) {
+				_cmd = CMD_INSTALL;
+				_arg1 = argv[++i];
+			} else if (strcmp(argv[i], "uninstall") == 0) {
+				_cmd = CMD_UNINSTALL;
+				_arg1 = argv[++i];
+			} else if (strcmp(argv[i], "listapp") == 0) {
+				_cmd = CMD_LISTAPP;
+			} else if (strcmp(argv[i], "logcat") == 0) {
+				_cmd = CMD_LOGCAT;
+			} else if (strcmp(argv[i], "ls") == 0) {
+				_cmd = CMD_LISTDIR;
+				if (strcmp(argv[i+1], "-b") == 0) {
+					i += 2;
+					_option = argv[i];
+				}
+				_arg1 = argv[++i];
+			} else if (strcmp(argv[i], "push") == 0) {
+				_cmd = CMD_PUSH;
+				if (strcmp(argv[i+1], "-b") == 0) {
+					i += 2;
+					_option = argv[i];
+				}
+				_arg1 = argv[++i];
+				_arg2 = argv[++i];
+			} else if (strcmp(argv[i], "pull") == 0) {
+				_cmd = CMD_PULL;
+				if (strcmp(argv[i+1], "-b") == 0) {
+					i += 2;
+					_option = argv[i];
+				}
+				_arg1 = argv[++i];
+				_arg2 = argv[++i];
+			} else {
+				return -1;
+			}
+			break;
 		}
 		i++;
 	}
-	if (argc <= 1 || i > argc) {
+	printf("i:%d, argc:%d\n", i, argc);
+	if (argc <= 1 || i >= argc) {
 		return -1;
 	}
-	if (_device_id != NULL && _cmd == CMD_UNKNOWN) {
+	if (_cmd == CMD_UNKNOWN) {
 		return -1;
 	}
 	/*
@@ -61,11 +85,6 @@ int Manager::parse(int argc, char *argv[])
 		return -1;
 	}
 	*/
-
-	_argc = argc;
-	_argv = argv;
-	_argindex = i-1;
-
 	return 0;
 }
 
@@ -107,35 +126,51 @@ void Manager::connectDevice(struct am_device *amdevice)
 	}
 
 	_state = S_RUN_ONCE;
-	//dispatch
 	Device *device = getDevice(amdevice, true);
 
-	if (_cmd == CMD_DEVICES) {
+	//dispatch
+	switch (_cmd) {
+	case CMD_DEVICES: {
 		printf("[device] %s\n", str_device_id);
-	} else if (_cmd == CMD_INSTALL) {
-		const char *app_path = _argv[_argindex++];
+		break;
+	}
+	case CMD_INSTALL: {
+		const char *app_path = _arg1;
 		if (device->install(app_path) == 0) {
 			printf("Install success!\n");
 		} else {
 			printf("Install fail!\n");
 		}
-	} else if (_cmd == CMD_UNINSTALL) {
-		const char *bundle_id = _argv[_argindex++];
+		break;
+	}
+	case CMD_UNINSTALL: {
+		const char *bundle_id = _arg1;
 		if (device->uninstall(bundle_id) == 0) {
 			printf("Uninstall success!\n");
 		} else {
 			printf("Uninstall fail!\n");
 		}
-	} else if (_cmd == CMD_LISTAPP) {
+		break;
+	}
+	case CMD_LISTAPP: {
 		if (device->listApps() != 0) {
 			printf("List applications fail!\n");
 		}
-	} else if (_cmd == CMD_LISTDIR) {
-		const char *path = _argv[_argindex++];
-		device->listDirectory(path);
-	} else if (_cmd == CMD_LOGCAT) {
+		break;
+	}
+	case CMD_LOGCAT: {
 		_state = S_RUN_LOOP;
 		device->startLogcat();
+		break;
+	}
+	case CMD_LISTDIR:
+	case CMD_PUSH:
+	case CMD_PULL: {
+		device->operateFile(_cmd, _option, _arg1, _arg2);
+		break;
+	}
+	default: {}
+		break;
 	}
 
 	CFRelease(device_id);

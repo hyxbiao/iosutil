@@ -64,6 +64,58 @@ int FileAccess::listDirectory(const char *dir_path)
 	return 0;
 }
 
+int FileAccess::push(const char *local, const char *remote)
+{
+	return 0;
+}
+
+int FileAccess::pull(const char *remote, const char *local)
+{
+	if (_afc == NULL) {
+		return -1;
+	}
+	CFMutableDictionaryRef file_dict = getFileInfo(remote);
+	CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
+	if (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) != kCFCompareEqualTo) {
+		int ret = copyFileFromDevice(remote, local);
+		CFRelease(file_dict);
+		return ret;
+	}
+	CFRelease(file_dict);
+
+	struct afc_directory *dir;
+	if (AFCDirectoryOpen(_afc, dir_path, &dir) != MDERR_OK) {
+		return -1;
+	}
+	char *d = NULL;
+	char path1[256], path2[256];
+	while(true) {
+		AFCDirectoryRead(_afc, dir, &d);
+		if (d == NULL) {
+			break;
+		}
+		if (strcmp(d, ".") == 0 || strcmp(d, "..") == 0) {
+			continue;
+		}
+		snprintf(path1, sizeof(path1), "%s/%s", remote, d);
+		file_dict = getFileInfo(path1);
+		if (file_dict == NULL) {
+			continue;
+		}
+		snprintf(path2, sizeof(path2), "%s/%s", local, d);
+		CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
+		if (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) == kCFCompareEqualTo) {
+			pull(path1, path2);
+		} else {
+			copyFileFromDevice(path1, path2);
+		}
+		CFRelease(file_dict);
+	}
+	AFCDirectoryClose(_afc, dir);
+
+	return 0;
+}
+
 CFMutableDictionaryRef FileAccess::getFileInfo(const char *path)
 {
     struct afc_dictionary *file_info;

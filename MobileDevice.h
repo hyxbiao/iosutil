@@ -63,7 +63,8 @@ typedef unsigned int mach_error_t;
 #define AMSVC_SYSLOG_RELAY          CFSTR("com.apple.syslog_relay")
 #define AMSVC_SYSTEM_PROFILER       CFSTR("com.apple.mobile.system_profiler")
 /* add by hyxbiao */
-#define AMSVC_INSTALL_PROXY         CFSTR("com.apple.mobile.installation_proxy")
+#define AMSVC_INSTALL_PROXY			CFSTR("com.apple.mobile.installation_proxy")
+#define AMSVC_CRASH_REPORT_COPY_MOBILE     CFSTR("com.apple.crashreportcopymobile")
 /* end */
 
 typedef unsigned int afc_error_t;
