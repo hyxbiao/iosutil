@@ -2,14 +2,14 @@
 #include <stdio.h>
 #include "MobileDevice.h"
 #include "common.h"
-#include "device.h"
 
 #include "manager.h"
 
 Manager* Manager::_inst = 0;
 
 Manager::Manager()
-	:_device_id(NULL), _cmd(CMD_UNKNOWN), _active(false)
+	:_devices(NULL)
+	 , _device_id(NULL), _cmd(CMD_UNKNOWN), _state(S_UNKNOWN)
 {
 }
 
@@ -43,6 +43,8 @@ int Manager::parse(int argc, char *argv[])
 		} else if (strcmp(argv[i], "ls") == 0) {
 			_cmd = CMD_LISTDIR;
 			i++;
+		} else if (strcmp(argv[i], "logcat") == 0) {
+			_cmd = CMD_LOGCAT;
 		} else {
 			return -1;
 		}
@@ -54,9 +56,11 @@ int Manager::parse(int argc, char *argv[])
 	if (_device_id != NULL && _cmd == CMD_UNKNOWN) {
 		return -1;
 	}
+	/*
 	if (_device_id == NULL && _cmd != CMD_DEVICES) {
 		return -1;
 	}
+	*/
 
 	_argc = argc;
 	_argv = argv;
@@ -68,6 +72,8 @@ int Manager::parse(int argc, char *argv[])
 void Manager::run()
 {
     AMDSetLogLevel(5); // otherwise syslog gets flooded with crap
+
+    _devices = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, NULL, NULL);
 
     int timeout = 1;
 	CFRunLoopTimerContext context;
@@ -86,25 +92,25 @@ void Manager::run()
     CFRunLoopRun();
 }
 
-void Manager::handleDevice(struct am_device *amdevice) 
+void Manager::connectDevice(struct am_device *amdevice) 
 {
 	CFStringRef device_id = AMDeviceCopyDeviceIdentifier(amdevice);
 	const char *str_device_id = CFStringGetCStringPtr(device_id, CFStringGetSystemEncoding());
 
 	if (_device_id != NULL) {
 		if (strcmp(_device_id, str_device_id) == 0) {
-			this->setActive(true);
+			_state = S_RUN_ONCE;
 		} else {
 			CFRelease(device_id);
 			return;
 		}
 	}
 
+	_state = S_RUN_ONCE;
 	//dispatch
-	
-	Device *device = new Device(amdevice);
+	Device *device = getDevice(amdevice, true);
+
 	if (_cmd == CMD_DEVICES) {
-		this->setActive(true);
 		printf("[device] %s\n", str_device_id);
 	} else if (_cmd == CMD_INSTALL) {
 		const char *app_path = _argv[_argindex++];
@@ -127,21 +133,51 @@ void Manager::handleDevice(struct am_device *amdevice)
 	} else if (_cmd == CMD_LISTDIR) {
 		const char *path = _argv[_argindex++];
 		device->listDirectory(path);
+	} else if (_cmd == CMD_LOGCAT) {
+		_state = S_RUN_LOOP;
+		device->startLogcat();
 	}
-
-	delete device;
 
 	CFRelease(device_id);
 }
 
-void Manager::setActive(bool active)
+void Manager::disConnectDevice(struct am_device *amdevice) 
 {
-	_active = active;
+	Device *device = getDevice(amdevice);
+	if (device != NULL) {
+		device->setAlive(false);
+		if (_cmd == CMD_LOGCAT) {
+			device->stopLogcat();
+		}
+	}
+}
+
+Device * Manager::getDevice(struct am_device *amdevice, bool bcreate)
+{
+	Device *device = (Device *)CFDictionaryGetValue(_devices, amdevice);
+	if (bcreate && device == NULL) {
+		device = new Device(amdevice);
+		device->setAlive(true);
+		CFDictionarySetValue(_devices, amdevice, device);
+	}
+	return device;
 }
 
 bool Manager::isActive()
 {
-	return _active;
+	return (_state != S_UNKNOWN);
+}
+
+bool Manager::isRunLoop()
+{
+	return (_state == S_RUN_LOOP);
+}
+
+void Manager::release()
+{
+	if (_devices) {
+		CFRelease(_devices);
+	}
 }
 
 void Manager::timeoutCallback(CFRunLoopTimerRef timer, void *arg) 
@@ -160,15 +196,18 @@ void Manager::deviceCallback(struct am_device_notification_callback_info *info, 
 
     switch (info->msg) {
         case ADNCI_MSG_CONNECTED: {
-            manager->handleDevice(info->dev);
+            manager->connectDevice(info->dev);
 			break;
 		}
         case ADNCI_MSG_DISCONNECTED: {
+            manager->disConnectDevice(info->dev);
 			break;
 		}
         default:
             break;
     }
 
-	CFRunLoopStop(CFRunLoopGetCurrent());
+	if (!manager->isRunLoop()) {
+		CFRunLoopStop(CFRunLoopGetCurrent());
+	}
 }

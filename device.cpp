@@ -1,10 +1,10 @@
 
-#include "MobileDevice.h"
+#include "common.h"
 #include "fileaccess.h"
 #include "device.h"
 
 Device::Device(struct am_device *device)
-	:_device(device)
+	:_device(device), _alive(false), _logloop(false)
 {
 }
 
@@ -231,6 +231,79 @@ LISTDIR_END:
 	stopService(fd_afc);
 
 	return ret;
+}
+
+int Device::startLogcat()
+{
+	service_conn_t fd_log;
+	if (startService(AMSVC_SYSLOG_RELAY, &fd_log) != 0) {
+		return -1;
+	}
+
+	CFSocketContext context = {0, this, NULL, NULL, NULL};
+	CFSocketRef socket = CFSocketCreateWithNative(kCFAllocatorDefault,
+												  fd_log,
+												  kCFSocketDataCallBack,
+												  socketCallback,
+												  &context);
+	if (socket) {
+		CFRunLoopSourceRef source = CFSocketCreateRunLoopSource(kCFAllocatorDefault, socket, 0);
+		if (source) {
+			CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
+			_loginfo.fd = fd_log;
+			_loginfo.socket = socket;
+			_loginfo.source = source;
+			_logloop = true;
+			CFRelease(source);
+		}
+		CFRelease(socket);
+	}
+	//stopService(fd_log);
+	return 0;
+}
+
+void Device::stopLogcat()
+{
+	if (_logloop) {
+		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), _loginfo.source, kCFRunLoopCommonModes);
+		CFRelease(_loginfo.source);
+		CFRelease(_loginfo.socket);
+		stopService(_loginfo.fd);
+	}
+}
+
+void Device::socketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef address, const void *data, void *info)
+{
+	Device *device = (Device *)info;
+	// Skip null bytes
+	ssize_t length = (ssize_t)CFDataGetLength((CFDataRef)data);
+	const char *buffer = (const char *)CFDataGetBytePtr((CFDataRef)data);
+	while (length) {
+		while (*buffer == '\0') {
+			buffer++;
+			length--;
+			if (length == 0) {
+				return;
+			}
+		}
+		size_t extentLength = 0;
+		while ((buffer[extentLength] != '\0') && extentLength != length) {
+			extentLength++;
+		}
+		printf("%s", buffer);
+		length -= extentLength;
+		buffer += extentLength;
+	}
+}
+
+bool Device::isAlive()
+{
+	return _alive;
+}
+
+void Device::setAlive(bool alive)
+{
+	_alive = alive;
 }
 
 int Device::startService(CFStringRef service_name, service_conn_t *handle)

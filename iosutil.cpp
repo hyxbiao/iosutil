@@ -78,6 +78,7 @@ void usage() {
 		"  uninstall <bundle id>                uninstall app\n"
         "  listapp                              list all installed apps\n"
         "  ls <path>                            ls directory\n"
+        "  logcat                               tail syslog\n"
 	);
 	exit(0);
 }
