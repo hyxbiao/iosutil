@@ -1,4 +1,8 @@
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <libgen.h>
 #include "fileaccess.h"
 
 FileAccess::FileAccess(service_conn_t fd)
@@ -66,54 +70,142 @@ int FileAccess::listDirectory(const char *dir_path)
 
 int FileAccess::push(const char *local, const char *remote)
 {
-	return 0;
+	return copy(local, remote, false, true);
 }
 
 int FileAccess::pull(const char *remote, const char *local)
 {
+	return copy(remote, local, true, false);
+}
+
+int FileAccess::copy(const char *from, const char *to, bool isfromdevice, bool istodevice)
+{
 	if (_afc == NULL) {
 		return -1;
 	}
-	CFMutableDictionaryRef file_dict = getFileInfo(remote);
-	CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
-	if (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) != kCFCompareEqualTo) {
-		int ret = copyFileFromDevice(remote, local);
-		CFRelease(file_dict);
-		return ret;
-	}
-	CFRelease(file_dict);
 
-	struct afc_directory *dir;
-	if (AFCDirectoryOpen(_afc, dir_path, &dir) != MDERR_OK) {
+	FileType from_file_type = getFileType(from, isfromdevice);
+	if (from_file_type == F_NOEXIST) {
+		printf("From path is no exist!\n");
 		return -1;
 	}
+	FileType to_file_type = getFileType(to, istodevice);
+	if (to_file_type == F_NOEXIST) {
+		if (getFileType(dirname((char *)to), istodevice) != F_DIR) {
+			printf("To path is not valid!\n");
+			return -1;
+		}
+	}
+
+	char *basepath = basename((char *)from);
+	char tmp[256];
+	if (from_file_type == F_FILE) {
+		if (to_file_type == F_DIR) {
+			snprintf(tmp, sizeof(tmp), "%s/%s", to, basepath);
+			return copyFile(from, tmp, isfromdevice, istodevice);
+		}
+		return copyFile(from, to, isfromdevice, istodevice);
+	} else {
+		if (to_file_type == F_FILE) {
+			printf("To path is file!\n");
+			return -1;
+		}
+		char *newtopath = (char *)to;
+		if (to_file_type == F_DIR) {
+			snprintf(tmp, sizeof(tmp), "%s/%s", to, basepath);
+			newtopath = tmp;;
+		}
+		if (this->mkdir(newtopath, istodevice) < 0) {
+			printf("mkdir <%s> fail!\n", newtopath);
+			return -1;
+		}
+		return copyDirectory(from, newtopath, isfromdevice, istodevice);
+	}
+
+	return 0;
+}
+
+int FileAccess::copyDirectory(const char *from, const char *to, bool isfromdevice, bool istodevice)
+{
+	FDIR *dir = this->opendir(from, isfromdevice);
+	if (dir == NULL) {
+		return -1;
+	}
+
+	char nfrom[256], nto[256];
+
+	int ret = 0;
 	char *d = NULL;
-	char path1[256], path2[256];
-	while(true) {
-		AFCDirectoryRead(_afc, dir, &d);
+	while (true) {
+		d = this->readir(dir, isfromdevice);
 		if (d == NULL) {
 			break;
 		}
 		if (strcmp(d, ".") == 0 || strcmp(d, "..") == 0) {
 			continue;
 		}
-		snprintf(path1, sizeof(path1), "%s/%s", remote, d);
-		file_dict = getFileInfo(path1);
-		if (file_dict == NULL) {
+		snprintf(nfrom, sizeof(nfrom), "%s/%s", from, d);
+		FileType type = getFileType(nfrom, isfromdevice);
+		if (type == F_NOEXIST) {
 			continue;
 		}
-		snprintf(path2, sizeof(path2), "%s/%s", local, d);
-		CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
-		if (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) == kCFCompareEqualTo) {
-			pull(path1, path2);
+		snprintf(nto, sizeof(nto), "%s/%s", to, d);
+		if (type == F_DIR) {
+			if (this->mkdir(nto, istodevice) < 0) {
+				printf("mkdir <%s> fail!\n", nto);
+				ret = -1;
+				break;
+			}
+			if (copyDirectory(nfrom, nto, isfromdevice, istodevice) != 0) {
+				ret = -1;
+				break;
+			}
 		} else {
-			copyFileFromDevice(path1, path2);
+			if (copyFile(nfrom, nto, isfromdevice, istodevice) != 0) {
+				ret = -1;
+				break;
+			}
 		}
-		CFRelease(file_dict);
 	}
-	AFCDirectoryClose(_afc, dir);
+	this->closedir(dir, isfromdevice);
+	return ret;
+}
 
-	return 0;
+int FileAccess::copyFile(const char *from, const char *to, bool isfromdevice, bool istodevice)
+{
+	FFILE *from_fd = openfile(from, FM_READ, isfromdevice);
+	if (from_fd == NULL) {
+		return -1;
+	}
+
+	FFILE *to_fd = openfile(to, FM_WRITE, istodevice);
+	if (to_fd == NULL) {
+		closefile(from_fd, isfromdevice);
+		return -1;
+	}
+	int bufsize = 1024;
+	char *buf = (char *)malloc(bufsize);
+	if (buf == NULL) {
+		closefile(to_fd, istodevice);
+		closefile(from_fd, isfromdevice);
+		return -1;
+	}
+	int ret = 0;
+	while (true) {
+		int readed = readfile(from_fd, buf, bufsize, isfromdevice);
+		if (readed == 0) {
+			break;
+		}
+		if (writefile(to_fd, buf, readed, istodevice) == 0) {
+			ret = -1;
+			break;
+		}
+	}
+	free(buf);
+	closefile(to_fd, istodevice);
+	closefile(from_fd, isfromdevice);
+
+	return ret;
 }
 
 CFMutableDictionaryRef FileAccess::getFileInfo(const char *path)
@@ -134,4 +226,141 @@ CFMutableDictionaryRef FileAccess::getFileInfo(const char *path)
 	} 
 	AFCKeyValueClose(file_info);
 	return file_dict;
+}
+
+FileAccess::FileType FileAccess::getFileType(const char *path, bool isdevice)
+{
+	FileType type = F_ERROR;
+	if (isdevice) {
+		CFMutableDictionaryRef file_dict = getFileInfo(path);
+		if (file_dict == NULL) {
+			return F_NOEXIST;
+		}
+		CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
+		type = (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) == kCFCompareEqualTo) ? F_DIR : F_FILE;
+		CFRelease(file_dict);
+	} else {
+		struct stat s;
+		if (stat(path, &s) != 0) {
+			return F_NOEXIST;
+		}
+		type = (s.st_mode & S_IFDIR) ? F_DIR : F_FILE;
+	}
+	return type;
+}
+
+int FileAccess::mkdir(const char *path, bool isdevice)
+{
+	if (isdevice) {
+		if (AFCDirectoryCreate(_afc, path) != MDERR_OK) {
+			return -1;
+		}
+	} else {
+		if (::mkdir(path, 0755) < 0) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+FileAccess::FDIR * FileAccess::opendir(const char *path, bool isdevice)
+{
+	if (isdevice) {
+		struct afc_directory *dir;
+		if (AFCDirectoryOpen(_afc, path, &dir) == MDERR_OK) {
+			return (FDIR *)dir;
+		}
+	} else {
+		return (FDIR *)::opendir(path);
+	}
+	return NULL;
+}
+
+char * FileAccess::readir(FDIR *dir, bool isdevice)
+{
+	if (isdevice) {
+		char *d = NULL;
+		struct afc_directory *ndir = (struct afc_directory *)dir;
+		if (AFCDirectoryRead(_afc, ndir, &d) != MDERR_OK) {
+			return NULL;
+		}
+		return d;
+	} else {
+		DIR *ndir = (DIR *)dir;
+		struct dirent* dp = ::readdir(ndir);
+		if (dp == NULL) {
+			return NULL;
+		}
+		return dp->d_name;
+	}
+	return NULL;
+}
+
+int FileAccess::closedir(FDIR *dir, bool isdevice)
+{
+	if (isdevice) {
+		return AFCDirectoryClose(_afc, (struct afc_directory *)dir);
+	} else {
+		return ::closedir((DIR *)dir);
+	}
+	return 0;
+}
+
+FileAccess::FFILE * FileAccess::openfile(const char *path, int mode, bool isdevice)
+{
+	if (isdevice) {
+		afc_file_ref rfd;
+		int r = AFCFileRefOpen(_afc, path, mode, &rfd);
+		if (r != 0) {
+			return NULL;
+		}
+		return (FFILE *)rfd;
+	} else {
+		const char *m = (mode == FM_READ) ? "r" : "w";
+		FILE *fp = fopen(path, m);
+		return (FFILE *)fp;
+	}
+	return NULL;
+}
+
+size_t FileAccess::readfile(FFILE *fd, char *buf, size_t bufsize, bool isdevice)
+{
+	if (isdevice) {
+		unsigned int readed = bufsize;
+		int ret = AFCFileRefRead(_afc, (afc_file_ref)fd, buf, &readed);
+		if (ret != MDERR_OK) {
+			return 0;
+		}
+		return readed;
+	} else {
+		return fread(buf, 1, bufsize, (FILE *)fd);
+	}
+	return 0;
+}
+
+size_t FileAccess::writefile(FFILE *fd, char *buf, size_t bufsize, bool isdevice)
+{
+	if (isdevice) {
+		int ret = AFCFileRefWrite(_afc, (afc_file_ref)fd, buf, bufsize);
+		if (ret != MDERR_OK) {
+			return 0;
+		}
+		return 1;
+	} else {
+		return fwrite(buf, bufsize, 1, (FILE *)fd);
+	}
+	return 0;
+}
+
+int FileAccess::closefile(FFILE *fd, bool isdevice)
+{
+	if (fd == NULL) {
+		return 0;
+	}
+	if (isdevice) {
+		return AFCFileRefClose(_afc, (afc_file_ref)fd);
+	} else {
+		return fclose((FILE *)fd);
+	}
+	return 0;
 }
