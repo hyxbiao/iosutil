@@ -73,7 +73,7 @@ int Manager::parse(int argc, char *argv[])
 		}
 		i++;
 	}
-	printf("i:%d, argc:%d\n", i, argc);
+	//printf("i:%d, argc:%d\n", i, argc);
 	if (argc <= 1 || i >= argc) {
 		return -1;
 	}

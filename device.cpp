@@ -50,10 +50,10 @@ int Device::install(const char *app_path)
 
 	if (status != MDERR_OK)
 	{
-		char* error = "Unknown error.";
-		if (status == 0xe8008015)
-			error = "Your application failed code-signing checks. Check your certificates, provisioning profiles, and bundle ids.";
-		printf("AMDeviceInstallApplication failed: 0x%X: %s\n", status, error);
+		if (status == 0xe8008015) {
+			printf("Your application failed code-signing checks. Check your certificates, provisioning profiles, and bundle ids.");
+		}
+		printf("AMDeviceInstallApplication failed: 0x%X\n", status);
 		return -1;
 	}
 
@@ -66,6 +66,7 @@ mach_error_t Device::transferCallback(CFDictionaryRef dict, int arg)
 	CFStringRef status = (CFStringRef)CFDictionaryGetValue(dict, CFSTR("Status"));
 	CFNumberGetValue((CFNumberRef)CFDictionaryGetValue(dict, CFSTR("PercentComplete")), kCFNumberSInt32Type, &percent);
 
+	//CFShow(dict);
 	if (CFEqual(status, CFSTR("CopyingFile"))) {
 		CFStringRef path = (CFStringRef)CFDictionaryGetValue(dict, CFSTR("Path"));
 
@@ -81,6 +82,7 @@ mach_error_t Device::installCallback(CFDictionaryRef dict, int arg)
 	CFStringRef status = (CFStringRef)CFDictionaryGetValue(dict, CFSTR("Status"));
 	CFNumberGetValue((CFNumberRef)CFDictionaryGetValue(dict, CFSTR("PercentComplete")), kCFNumberSInt32Type, &percent);
 
+	//CFShow(dict);
 	printf("[Install][%3d%%] arg:%d, Status: %s\n", percent, arg, CFStringGetCStringPtr(status, kCFStringEncodingMacRoman));
 	return 0;
 }
@@ -198,8 +200,11 @@ int Device::listApps()
 			if (app_name != NULL) {
 				CFStringGetCString(app_name, str_app_name, sizeof(str_app_name), kCFStringEncodingUTF8 );
 			}
+			CFStringRef app_version = (CFStringRef)CFDictionaryGetValue(app, CFSTR("CFBundleVersion"));
+			const char * str_app_version = (const char *)CFStringGetCStringPtr(app_version, CFStringGetSystemEncoding());
 			const char * str_key = (const char *)CFStringGetCStringPtr(key, CFStringGetSystemEncoding());
-			printf("%-15s\t%s\n", str_app_name, str_key);
+			//printf("%-15s(%s)\t%s\n", str_app_name, str_app_version, str_key);
+			printf("%-40s\t%s(%s)\n", str_key, str_app_name, str_app_version);
 		}
 	}
 

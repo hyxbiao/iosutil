@@ -40,11 +40,15 @@ int FileAccess::listDirectory(const char *dir_path)
 		if (d == NULL) {
 			break;
 		}
+		if (strcmp(d, ".") == 0 || strcmp(d, "..") == 0) {
+			continue;
+		}
 		snprintf(path, sizeof(path), "%s/%s", dir_path, d);
 		CFMutableDictionaryRef file_dict = getFileInfo(path);
 		if (file_dict == NULL) {
 			continue;
 		}
+		//CFShow(file_dict);
 		CFStringRef ifmt = (CFStringRef)CFDictionaryGetValue(file_dict, CFSTR("st_ifmt"));
 		const char *ifmt_cstr = (CFStringCompare(ifmt, CFSTR("S_IFDIR"), kCFCompareLocalized) == kCFCompareEqualTo) ? "d" : "-";
 		CFStringRef size = (CFStringRef)CFDictionaryGetValue(file_dict,CFSTR("st_size"));
@@ -175,15 +179,17 @@ int FileAccess::copyFile(const char *from, const char *to, bool isfromdevice, bo
 {
 	FFILE *from_fd = openfile(from, FM_READ, isfromdevice);
 	if (from_fd == NULL) {
+		printf("Open \"%s\" fail!\n", from);
 		return -1;
 	}
 
 	FFILE *to_fd = openfile(to, FM_WRITE, istodevice);
 	if (to_fd == NULL) {
+		printf("Open \"%s\" fail!\n", to);
 		closefile(from_fd, isfromdevice);
 		return -1;
 	}
-	int bufsize = 1024;
+	int bufsize = 4096;
 	char *buf = (char *)malloc(bufsize);
 	if (buf == NULL) {
 		closefile(to_fd, istodevice);
@@ -204,6 +210,8 @@ int FileAccess::copyFile(const char *from, const char *to, bool isfromdevice, bo
 	free(buf);
 	closefile(to_fd, istodevice);
 	closefile(from_fd, isfromdevice);
+
+	printf("Copy \"%s\" done\n", from);
 
 	return ret;
 }
@@ -364,3 +372,4 @@ int FileAccess::closefile(FFILE *fd, bool isdevice)
 	}
 	return 0;
 }
+

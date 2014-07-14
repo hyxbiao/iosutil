@@ -47,6 +47,7 @@ private:
 	size_t readfile(FFILE *fd, char *buf, size_t bufsize, bool isdevice);
 	size_t writefile(FFILE *fd, char *buf, size_t bufsize, bool isdevice);
 	int closefile(FFILE *fd, bool isdevice);
+
 private:
 	service_conn_t _fd;
 	struct afc_connection *_afc;
