@@ -20,5 +20,6 @@ iosutil is used for connect with unjailbreak ios device and pc, now is available
 	  pull [-b <bundle id|crash>] <remote> <local>        copy file/dir from device
 	
 	example:
+	  iosutil ls /
 	  iosutil ls -b crash /
 	  iosutil ls -b com.baidu.BaiduMobile /Documents

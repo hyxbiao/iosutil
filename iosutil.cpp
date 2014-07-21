@@ -19,6 +19,7 @@ void usage() {
         "  pull [-b <bundle id|crash>] <remote> <local>        copy file/dir from device\n"
 		"\n"
 		"example:\n"
+		"  iosutil ls /\n"
 		"  iosutil ls -b crash /\n"
 		"  iosutil ls -b com.baidu.BaiduMobile /Documents\n"
 		"\n"
