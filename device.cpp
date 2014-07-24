@@ -185,6 +185,7 @@ int Device::listApps()
 	}
 
 	char str_app_name[256];
+	char str_app_exe[64];
 
 	CFIndex count = CFDictionaryGetCount(apps);
 	printf("Total %ld applications:\n", count);
@@ -200,11 +201,17 @@ int Device::listApps()
 			if (app_name != NULL) {
 				CFStringGetCString(app_name, str_app_name, sizeof(str_app_name), kCFStringEncodingUTF8 );
 			}
+			CFStringRef app_exe = (CFStringRef)CFDictionaryGetValue(app, CFSTR("CFBundleExecutable"));
+			str_app_exe[0] = '\0';
+			if (app_exe != NULL) {
+				CFStringGetCString(app_exe, str_app_exe, sizeof(str_app_exe), kCFStringEncodingUTF8 );
+			}
+
 			CFStringRef app_version = (CFStringRef)CFDictionaryGetValue(app, CFSTR("CFBundleVersion"));
 			const char * str_app_version = (const char *)CFStringGetCStringPtr(app_version, CFStringGetSystemEncoding());
 			const char * str_key = (const char *)CFStringGetCStringPtr(key, CFStringGetSystemEncoding());
 			//printf("%-15s(%s)\t%s\n", str_app_name, str_app_version, str_key);
-			printf("%-40s\t%s(%s)\n", str_key, str_app_name, str_app_version);
+			printf("%-40s\t%-20s\t%s(%s)\n", str_key, str_app_exe, str_app_name, str_app_version);
 		}
 	}
 

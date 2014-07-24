@@ -128,6 +128,7 @@ void Manager::connectDevice(struct am_device *amdevice)
 	_state = S_RUN_ONCE;
 	Device *device = getDevice(amdevice, true);
 
+	int ret = 0;
 	//dispatch
 	switch (_cmd) {
 	case CMD_DEVICES: {
@@ -136,20 +137,24 @@ void Manager::connectDevice(struct am_device *amdevice)
 	}
 	case CMD_INSTALL: {
 		const char *app_path = _arg1;
-		if (device->install(app_path) == 0) {
+		ret = device->install(app_path);
+		if (ret == 0) {
 			printf("Install success!\n");
 		} else {
 			printf("Install fail!\n");
 		}
+		exit(ret);
 		break;
 	}
 	case CMD_UNINSTALL: {
 		const char *bundle_id = _arg1;
-		if (device->uninstall(bundle_id) == 0) {
+		ret = device->uninstall(bundle_id);
+		if (ret == 0) {
 			printf("Uninstall success!\n");
 		} else {
 			printf("Uninstall fail!\n");
 		}
+		exit(ret);
 		break;
 	}
 	case CMD_LISTAPP: {
@@ -166,7 +171,8 @@ void Manager::connectDevice(struct am_device *amdevice)
 	case CMD_LISTDIR:
 	case CMD_PUSH:
 	case CMD_PULL: {
-		device->operateFile(_cmd, _option, _arg1, _arg2);
+		ret = device->operateFile(_cmd, _option, _arg1, _arg2);
+		exit(ret);
 		break;
 	}
 	default: {}
