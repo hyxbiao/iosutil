@@ -66,6 +66,13 @@ int Manager::parse(int argc, char *argv[])
 				}
 				_arg1 = argv[++i];
 				_arg2 = argv[++i];
+			} else if (strcmp(argv[i], "rm") == 0) {
+				_cmd = CMD_REMOVE;
+				if (strcmp(argv[i+1], "-b") == 0) {
+					i += 2;
+					_option = argv[i];
+				}
+				_arg1 = argv[++i];
 			} else {
 				return -1;
 			}
@@ -170,8 +177,13 @@ void Manager::connectDevice(struct am_device *amdevice)
 	}
 	case CMD_LISTDIR:
 	case CMD_PUSH:
-	case CMD_PULL: {
+	case CMD_PULL:
+	case CMD_REMOVE: 
+	{
 		ret = device->operateFile(_cmd, _option, _arg1, _arg2);
+		if (ret != 0) {
+			printf("Access file fail!\n");
+		}
 		exit(ret);
 		break;
 	}

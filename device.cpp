@@ -247,6 +247,10 @@ int Device::operateFile(int cmd, const char *str_target, const char *arg1, const
 		ret = fa->pull(arg1, arg2);
 		break;
 	}
+	case CMD_REMOVE: {
+		ret = fa->remove(arg1);
+		break;
+	}
 	default: {}
 		break;
 	}

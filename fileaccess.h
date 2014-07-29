@@ -30,6 +30,7 @@ public:
 	int push(const char *local, const char *remote);
 	int pull(const char *remote, const char *local);
 	int copy(const char *from, const char *to, bool isfromdevice, bool istodevice);
+	int remove(const char *path);
 private:
 	int copyDirectory(const char *from, const char *to, bool isfromdevice, bool istodevice);
 	int copyFile(const char *from, const char *to, bool isfromdevice, bool istodevice);

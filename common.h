@@ -11,7 +11,8 @@ enum {
 	CMD_LOGCAT		=		0x05,
 	CMD_LISTDIR		=		0x06,
 	CMD_PUSH		=		0x07,
-	CMD_PULL		=		0x08
+	CMD_PULL		=		0x08,
+	CMD_REMOVE		=		0x09
 };
 
 #endif	//__COMMON_H__

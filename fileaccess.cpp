@@ -129,6 +129,47 @@ int FileAccess::copy(const char *from, const char *to, bool isfromdevice, bool i
 	return 0;
 }
 
+int FileAccess::remove(const char *path)
+{
+	if (_afc == NULL) {
+		return -1;
+	}
+
+	FileType file_type = getFileType(path, true);
+	if (file_type == F_NOEXIST) {
+		printf("Path is no exist!\n");
+		return -1;
+	}
+	int ret = 0;
+	if (file_type == F_DIR) {
+		char newpath[256];
+		char *d = NULL;
+		FDIR *dir = this->opendir(path, true);
+		if (dir == NULL) {
+			return -1;
+		}
+		while (true) {
+			d = this->readir(dir, true);
+			if (d == NULL) {
+				break;
+			}
+			if (strcmp(d, ".") == 0 || strcmp(d, "..") == 0) {
+				continue;
+			}
+			snprintf(newpath, sizeof(newpath), "%s/%s", path, d);
+			if (this->remove(newpath) != 0) {
+				ret = -1;
+				break;
+			}
+		}
+		this->closedir(dir, true);
+	}
+	if (ret == 0) {
+		return AFCRemovePath(_afc, path);
+	}
+	return ret;
+}
+
 int FileAccess::copyDirectory(const char *from, const char *to, bool isfromdevice, bool istodevice)
 {
 	FDIR *dir = this->opendir(from, isfromdevice);

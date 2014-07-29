@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "manager.h"
 
-#define	VERSION	"0.9.1"
+#define	VERSION	"0.9.2"
 
 void usage() {
     printf(
@@ -17,6 +17,7 @@ void usage() {
         "  ls [-b <bundle id|crash>] <path>                    ls directory\n"
         "  push [-b <bundle id|crash>] <local> <remote>        copy file/dir to device\n"
         "  pull [-b <bundle id|crash>] <remote> <local>        copy file/dir from device\n"
+        "  rm [-b <bundle id|crash>] <remote>              remove file/dir from device\n"
 		"\n"
 		"example:\n"
 		"  iosutil ls /\n"
