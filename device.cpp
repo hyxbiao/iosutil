@@ -121,6 +121,34 @@ int Device::uninstall(const char *str_bundle_id)
 	return 0;
 }
 
+void Device::showInfo()
+{
+	NSArray *keys = [NSArray arrayWithObjects:
+		@"UniqueDeviceID",
+		@"DeviceName",
+		@"BuildVersion",
+		@"DeviceClass",
+		@"ProductType",
+		@"ProductVersion",
+		@"SerialNumber",
+		nil
+	];
+	if (startSession() != 0) {
+		return;
+	}
+	for (NSString *nskey in keys) {
+		CFStringRef key = (CFStringRef)nskey;
+		CFStringRef value = AMDeviceCopyValue(_device, 0, key);
+		if (value != NULL) {
+			const char * str_key = (const char *)CFStringGetCStringPtr(key, CFStringGetSystemEncoding());
+			const char * str_value = (const char *)CFStringGetCStringPtr(value, CFStringGetSystemEncoding());
+			printf("%-40s\t%s\n", str_key, str_value);
+			CFRelease(value);
+		}
+	}
+	stopSession();
+}
+
 int Device::listApps()
 {
 	//copy from MobileDeviceAccess

@@ -43,6 +43,8 @@ int Manager::parse(int argc, char *argv[])
 				_cmd = CMD_LISTAPP;
 			} else if (strcmp(argv[i], "logcat") == 0) {
 				_cmd = CMD_LOGCAT;
+			} else if (strcmp(argv[i], "info") == 0) {
+				_cmd = CMD_INFO;
 			} else if (strcmp(argv[i], "ls") == 0) {
 				_cmd = CMD_LISTDIR;
 				if (strcmp(argv[i+1], "-b") == 0) {
@@ -140,6 +142,10 @@ void Manager::connectDevice(struct am_device *amdevice)
 	switch (_cmd) {
 	case CMD_DEVICES: {
 		printf("[device] %s\n", str_device_id);
+		break;
+	}
+	case CMD_INFO: {
+		device->showInfo();
 		break;
 	}
 	case CMD_INSTALL: {

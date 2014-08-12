@@ -21,6 +21,8 @@ public:
 	int install(const char *app_path);
 	int uninstall(const char *str_bundle_id);
 
+	void showInfo();
+
 	int listApps();
 	int operateFile(int cmd, const char *target, const char *arg1, const char *arg2);
 

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "manager.h"
 
-#define	VERSION	"0.9.2"
+#define	VERSION	"0.9.3"
 
 void usage() {
     printf(
@@ -14,10 +14,11 @@ void usage() {
 		"  uninstall <bundle id>                               uninstall app\n"
         "  listapp                                             list all installed apps\n"
         "  logcat                                              tail syslog\n"
+        "  info                                                show device infos\n"
         "  ls [-b <bundle id|crash>] <path>                    ls directory\n"
         "  push [-b <bundle id|crash>] <local> <remote>        copy file/dir to device\n"
         "  pull [-b <bundle id|crash>] <remote> <local>        copy file/dir from device\n"
-        "  rm [-b <bundle id|crash>] <remote>              remove file/dir from device\n"
+        "  rm [-b <bundle id|crash>] <remote>                  remove file/dir from device\n"
 		"\n"
 		"example:\n"
 		"  iosutil ls /\n"
