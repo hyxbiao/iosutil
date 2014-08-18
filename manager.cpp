@@ -232,7 +232,8 @@ bool Manager::isActive()
 
 bool Manager::isRunLoop()
 {
-	return (_state == S_RUN_LOOP);
+	//return (_state == S_RUN_LOOP);
+	return (_state != S_RUN_ONCE);
 }
 
 void Manager::release()
