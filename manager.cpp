@@ -141,6 +141,9 @@ void Manager::connectDevice(struct am_device *amdevice)
 	//dispatch
 	switch (_cmd) {
 	case CMD_DEVICES: {
+		if (_device_id == NULL) {
+			_state = S_RUN_LOOP;
+		}
 		printf("[device] %s\n", str_device_id);
 		break;
 	}
@@ -224,7 +227,7 @@ Device * Manager::getDevice(struct am_device *amdevice, bool bcreate)
 
 bool Manager::isActive()
 {
-	return (_state != S_UNKNOWN);
+	return (_cmd != CMD_DEVICES && _state != S_UNKNOWN);
 }
 
 bool Manager::isRunLoop()
