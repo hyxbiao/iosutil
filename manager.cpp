@@ -248,7 +248,7 @@ void Manager::timeoutCallback(CFRunLoopTimerRef timer, void *arg)
 	Manager *manager = (Manager *)arg;
 
     if (!manager->isActive()) {
-        fprintf(stderr, "Timed out waiting for device.\n");
+        //fprintf(stderr, "Timed out waiting for device.\n");
         exit(-1);
     }
 }
