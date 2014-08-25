@@ -52,6 +52,8 @@ int Device::install(const char *app_path)
 	{
 		if (status == 0xe8008015) {
 			printf("Your application failed code-signing checks. Check your certificates, provisioning profiles, and bundle ids.");
+			printf("AMDeviceInstallApplication failed: 0x%X\n", status);
+			return -2;
 		}
 		printf("AMDeviceInstallApplication failed: 0x%X\n", status);
 		return -1;

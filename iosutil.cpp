@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "manager.h"
 
-#define	VERSION	"0.9.6"
+#define	VERSION	"0.9.7"
 
 void usage() {
     printf(
