@@ -59,10 +59,19 @@ int FileAccess::listDirectory(const char *dir_path)
 
 		strftime(tmbuf, sizeof tmbuf, "%b %d %H:%M", mtimetm);
 
+		/*
+		 * not work in OS 10.10
 		printf("%s %16s %6s  %s\n", 
 			ifmt_cstr, 
 			tmbuf, 
 			CFStringGetCStringPtr(size, kCFStringEncodingMacRoman),
+			d
+		);
+		*/
+		printf("%s %16s %6d  %s\n", 
+			ifmt_cstr, 
+			tmbuf, 
+			CFStringGetIntValue(size),
 			d
 		);
 		CFRelease(file_dict);
@@ -230,7 +239,8 @@ int FileAccess::copyFile(const char *from, const char *to, bool isfromdevice, bo
 		closefile(from_fd, isfromdevice);
 		return -1;
 	}
-	int bufsize = 4096;
+	//FIXME: increase bufsize, in OS 10.10 AFCFileRefRead read the whole file data once
+	int bufsize = 1024 * 1024 * 10;
 	char *buf = (char *)malloc(bufsize);
 	if (buf == NULL) {
 		closefile(to_fd, istodevice);
